@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
@@ -25,14 +26,15 @@ import org.springframework.security.oauth2.config.annotation.web.configurers.Aut
 import org.springframework.security.oauth2.config.annotation.web.configurers.ResourceServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.code.AuthorizationCodeServices;
 import org.springframework.security.oauth2.provider.code.JdbcAuthorizationCodeServices;
+import org.springframework.security.oauth2.provider.token.DefaultTokenServices;
 import org.springframework.security.oauth2.provider.token.TokenStore;
-import org.springframework.security.oauth2.provider.token.store.JdbcTokenStore;
+import org.springframework.security.oauth2.provider.token.store.redis.RedisTokenStore;
 
 import javax.sql.DataSource;
 import java.security.SecureRandom;
 
 /**
- *
+ *http://sparkgis.com/java/2017/11/使用spring-boot构建独立的oauth服务器（二）-原-荐-使用spring-boot构/
  * */
 @Configuration
 @EnableWebSecurity
@@ -119,7 +121,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Configuration
     @EnableAuthorizationServer
     protected static class OAuth2Config extends AuthorizationServerConfigurerAdapter {
-
+        @Autowired
+        private RedisConnectionFactory redisConnectionFactory;
 
         @Autowired
         private AuthenticationManager auth;
@@ -128,15 +131,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         @Autowired
         UserDetailsService userDetailsService;
 
-        @Bean
-        public JdbcTokenStore tokenStore() {
-            return new JdbcTokenStore(dataSource);
-        }
+//        @Bean
+//        public JdbcTokenStore tokenStore() {
+//            return new JdbcTokenStore(dataSource);
+//        }
 
         @Bean
-        protected AuthorizationCodeServices authorizationCodeServices() {
-            return new JdbcAuthorizationCodeServices(dataSource);
+        public TokenStore tokenStore() {
+            return new RedisTokenStore(redisConnectionFactory);
         }
+
+//        @Bean
+//        protected AuthorizationCodeServices authorizationCodeServices() {
+//            return new JdbcAuthorizationCodeServices(dataSource);
+//        }
 
 
         @Override
@@ -148,7 +156,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         @Override
         public void configure(AuthorizationServerEndpointsConfigurer endpoints)
                 throws Exception {
-            endpoints.authorizationCodeServices(authorizationCodeServices())
+            endpoints.tokenServices(tokenServices(endpoints))
                     .authenticationManager(auth)
                     .tokenStore(tokenStore())
                     .userDetailsService(userDetailsService)
@@ -156,6 +164,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
         }
 
+        private DefaultTokenServices tokenServices(AuthorizationServerEndpointsConfigurer endpoints) {
+            DefaultTokenServices services = new DefaultTokenServices();
+            services.setTokenStore(tokenStore());
+            services.setSupportRefreshToken(true);
+            services.setReuseRefreshToken(false);
+            services.setClientDetailsService(endpoints.getClientDetailsService());
+            return services;
+        }
 
         @Override
         public void configure(ClientDetailsServiceConfigurer clients) throws Exception {

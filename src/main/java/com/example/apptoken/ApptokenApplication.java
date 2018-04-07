@@ -18,7 +18,17 @@ public class ApptokenApplication {
         return new AppUserDetailsService();
     }
 
-
+//    @Bean
+//    @Primary
+//    public DefaultTokenServices tokenServices(TokenStore tokenStore) {
+//        DefaultTokenServices defaultTokenServices = new DefaultTokenServices();
+//        defaultTokenServices.setTokenStore(tokenStore);
+//        defaultTokenServices.setSupportRefreshToken(true);
+//        defaultTokenServices.setReuseRefreshToken(false);
+//        defaultTokenServices.setAccessTokenValiditySeconds(7200);
+//        defaultTokenServices.setRefreshTokenValiditySeconds(-1);
+//        return defaultTokenServices;
+//    }
 
     public static void main(String[] args) {
         SpringApplication.run(ApptokenApplication.class, args);
