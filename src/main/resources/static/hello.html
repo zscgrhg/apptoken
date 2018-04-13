@@ -37,10 +37,10 @@
             }
         }
 
-       awaitPostMessage();
+       //awaitPostMessage();
         var isReactNativePostMessageReady = !!window.originalPostMessage;
 
-        alert(isReactNativePostMessageReady)
+
 
         var CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
         var TYPE_REQUEST = 'command'
@@ -151,6 +151,10 @@
                 save: function (id, args) {
                     localStorage.setItem(args.key, args.value)
                     sendReponse(id, 'ok')
+                },
+                load: function (id, args) {
+                   var value= localStorage.getItem(args.key)
+                    sendReponse(id, value)
                 }
             }
         }
@@ -158,6 +162,9 @@
         var actions = {
             save: function (k, v, onSuccess, onError) {
                 dispatcher.sendCommand({command: 'save', args: {key: k, value: v}}, onSuccess, onError)
+            },
+            load:function (k, onSuccess, onError) {
+                dispatcher.sendCommand({command: 'load', args: {key: k}}, onSuccess, onError)
             }
         }
 
@@ -178,13 +185,31 @@
 
         window.addEventListener("message", handlerMessage, false);
         document.addEventListener("message", handlerMessage, false);
-        actions.save('nihao', 'nihao123', function (ret) {
-            alert(ret)
-        })
+
+        function test() {
+            var key=document.getElementById("key").value
+            var value=document.getElementById("value").value
+
+            actions.save(key, value, function (ret) {
+                alert(ret+''+!!window.originalPostMessage)
+            })
+        }
+
+        function testLoad() {
+            var key=document.getElementById("key").value
+
+            actions.load(key, function (ret) {
+                alert(ret+''+!!window.originalPostMessage)
+            })
+        }
 
     </script>
 </head>
 <body>
 <h1>hello</h1>
+<input id="key" name="key"><br/>
+<input id="value" name="value">
+<a href="javascript:void(0)" onclick="test()">sendCommand</a><br/>
+<a href="javascript:void(0)" onclick="testLoad()">load</a>
 </body>
 </html>
