@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>web wiew test</title>
+    <script>
+
+        window.isWebView=false;
+        var CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+        var TYPE_REQUEST='request'
+        var TYPE_RESPONSE='response'
+        function genUUID() {
+            var chars = CHARS, uuid = new Array(36), rnd = 0, r;
+            for (var i = 0; i < 36; i++) {
+                if (i == 8 || i == 13 || i == 18 || i == 23) {
+                    uuid[i] = '-';
+                } else if (i == 14) {
+                    uuid[i] = '4';
+                } else {
+                    if (rnd <= 0x02) rnd = 0x2000000 + (Math.random() * 0x1000000) | 0;
+                    r = rnd & 0xf;
+                    rnd = rnd >> 4;
+                    uuid[i] = chars[(i == 19) ? (r & 0x3) | 0x8 : r];
+                }
+            }
+            return uuid.join('');
+        };
+
+        function tryInvoke() {
+            var args = Array.prototype.slice.call(arguments);
+            var func = args.shift();
+            if(typeof func ==='function'){
+                return func.apply(null, args);
+            }else {
+                return undefined;
+            }
+        }
+
+        function doPost(message) {
+            if(window.isWebView){
+                postMessage(JSON.stringify(message))
+            }else {
+                postMessage(JSON.stringify(message),window.origin)
+            }
+        }
+
+        function sendError(id,err) {
+            doPost({
+                id:id,
+                type:TYPE_RESPONSE,
+                error:err
+            })
+        }
+        function sendReponse(id,data) {
+            doPost({
+                id:id,
+                type:TYPE_RESPONSE,
+                data:data
+            })
+        }
+        /**
+         * request:
+         * {
+         *      id:string
+         *      action:string,
+         *      args:object,
+         *      type:'request'
+         * }
+         * response:{
+         *      id:string,
+         *      data:object,
+         *      error:object,
+         *      type:'response'
+         * }
+         *
+         * */
+        var dispatcher = {
+            stubs:{},
+            request:function (intent, onSuccess, onError) {
+                var message=Object.assign({},intent)
+                var id=genUUID();
+                message.id=id;
+                message.type=TYPE_REQUEST
+                this.stubs[id]={
+                    stub:message,
+                    onSuccess:onSuccess,
+                    onError:onError
+                }
+                doPost(message)
+            },
+            onResponse:function (response) {
+                var stub = this.stubs[response.id];
+                if(!stub){
+                    console.warn('stub not found:'+JSON.stringify(response))
+                    return;
+                }
+                try{
+                    if(response.error){
+                        tryInvoke(stub.onError,response.error)
+                    }else {
+                        tryInvoke(stub.onSuccess,response.data)
+                    }
+                }catch (err){
+                    console.error(err)
+                }finally {
+                    delete this.stubs[response.id];
+                    console.log(this.stubs)
+                }
+            },
+            requestHandler:{
+                save:function (id,args) {
+                    localStorage.setItem(args.key,args.value)
+                    sendReponse(id,'ok')
+                }
+            }
+        }
+
+        var actions={
+            save:function (k, v, onSuccess, onError) {
+                dispatcher.request({action:'save',args:{key:k,value:v}},onSuccess,onError)
+            }
+        }
+
+        function handlerMessage(event)
+        {
+            if (event.origin !== window.origin)
+                return;
+
+            var message=JSON.parse(event.data)
+            if(message.type===TYPE_RESPONSE){
+                dispatcher.onResponse(message)
+            }else if((!window.isWebView)&&message.type===TYPE_REQUEST){
+                tryInvoke(dispatcher.requestHandler[message.action],message.id,message.args)
+            }else{
+                console.error('not acceptable:'+event.data)
+            }
+        }
+        window.addEventListener("message", handlerMessage, false);
+    </script>
+</head>
+<body>
+<h1>hello</h1>
+</body>
+</html>
