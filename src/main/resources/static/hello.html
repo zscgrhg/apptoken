@@ -6,38 +6,38 @@
     <script>
         //https://www.jianshu.com/p/b37ee000379e
 
-        // function awaitPostMessage() {
-        //     var isReactNativePostMessageReady = !!window.originalPostMessage;
-        //     var queue = [];
-        //     var currentPostMessageFn = function store(message) {
-        //         if (queue.length > 100) queue.shift();
-        //         queue.push(message);
-        //     };
-        //     if (!isReactNativePostMessageReady) {
-        //         var originalPostMessage = window.postMessage;
-        //         Object.defineProperty(window, 'postMessage', {
-        //             configurable: true,
-        //             enumerable: true,
-        //             get: function () {
-        //                 return currentPostMessageFn;
-        //             },
-        //             set: function (fn) {
-        //                 currentPostMessageFn = fn;
-        //                 isReactNativePostMessageReady = true;
-        //                 setTimeout(sendQueue, 0);
-        //             }
-        //         });
-        //         window.postMessage.toString = function () {
-        //             return String(originalPostMessage);
-        //         };
-        //     }
-        //
-        //     function sendQueue() {
-        //         while (queue.length > 0) window.postMessage(queue.shift());
-        //     }
-        // }
+        function awaitPostMessage() {
+            var isReactNativePostMessageReady = !!window.originalPostMessage;
+            var queue = [];
+            var currentPostMessageFn = function store(message) {
+                if (queue.length > 100) queue.shift();
+                queue.push(message);
+            };
+            if (!isReactNativePostMessageReady) {
+                var originalPostMessage = window.postMessage;
+                Object.defineProperty(window, 'postMessage', {
+                    configurable: true,
+                    enumerable: true,
+                    get: function () {
+                        return currentPostMessageFn;
+                    },
+                    set: function (fn) {
+                        currentPostMessageFn = fn;
+                        isReactNativePostMessageReady = true;
+                        setTimeout(sendQueue, 0);
+                    }
+                });
+                window.postMessage.toString = function () {
+                    return String(originalPostMessage);
+                };
+            }
 
-       // awaitPostMessage();
+            function sendQueue() {
+                while (queue.length > 0) window.postMessage(queue.shift());
+            }
+        }
+
+       awaitPostMessage();
         var isReactNativePostMessageReady = !!window.originalPostMessage;
 
         alert(isReactNativePostMessageReady)
@@ -78,7 +78,6 @@
                 postMessage(JSON.stringify(payload))
             } else {
                 postMessage(JSON.stringify(payload), window.origin)
-                debugger;
             }
         }
 
@@ -163,7 +162,6 @@
         }
 
         function handlerMessage(event) {
-            debugger;
             if (event.origin && event.origin !== window.origin) {
                 return;
             }
@@ -179,7 +177,7 @@
         }
 
         window.addEventListener("message", handlerMessage, false);
-
+        document.addEventListener("message", handlerMessage, false);
         actions.save('nihao', 'nihao123', function (ret) {
             alert(ret)
         })
