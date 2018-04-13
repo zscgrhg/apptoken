@@ -4,11 +4,48 @@
     <meta charset="UTF-8">
     <title>web wiew test</title>
     <script>
+        //https://www.jianshu.com/p/b37ee000379e
 
-        window.isWebView=false;
+        // function awaitPostMessage() {
+        //     var isReactNativePostMessageReady = !!window.originalPostMessage;
+        //     var queue = [];
+        //     var currentPostMessageFn = function store(message) {
+        //         if (queue.length > 100) queue.shift();
+        //         queue.push(message);
+        //     };
+        //     if (!isReactNativePostMessageReady) {
+        //         var originalPostMessage = window.postMessage;
+        //         Object.defineProperty(window, 'postMessage', {
+        //             configurable: true,
+        //             enumerable: true,
+        //             get: function () {
+        //                 return currentPostMessageFn;
+        //             },
+        //             set: function (fn) {
+        //                 currentPostMessageFn = fn;
+        //                 isReactNativePostMessageReady = true;
+        //                 setTimeout(sendQueue, 0);
+        //             }
+        //         });
+        //         window.postMessage.toString = function () {
+        //             return String(originalPostMessage);
+        //         };
+        //     }
+        //
+        //     function sendQueue() {
+        //         while (queue.length > 0) window.postMessage(queue.shift());
+        //     }
+        // }
+
+       // awaitPostMessage();
+        var isReactNativePostMessageReady = !!window.originalPostMessage;
+
+        alert(isReactNativePostMessageReady)
+
         var CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
-        var TYPE_REQUEST='request'
-        var TYPE_RESPONSE='response'
+        var TYPE_REQUEST = 'command'
+        var TYPE_RESPONSE = 'response'
+
         function genUUID() {
             var chars = CHARS, uuid = new Array(36), rnd = 0, r;
             for (var i = 0; i < 36; i++) {
@@ -29,42 +66,46 @@
         function tryInvoke() {
             var args = Array.prototype.slice.call(arguments);
             var func = args.shift();
-            if(typeof func ==='function'){
+            try {
                 return func.apply(null, args);
-            }else {
-                return undefined;
+            } catch (err) {
+                console.error(err);
             }
         }
 
-        function doPost(message) {
-            if(window.isWebView){
-                postMessage(JSON.stringify(message))
-            }else {
-                postMessage(JSON.stringify(message),window.origin)
+        function doPost(payload) {
+            if (isReactNativePostMessageReady) {
+                postMessage(JSON.stringify(payload))
+            } else {
+                postMessage(JSON.stringify(payload), window.origin)
+                debugger;
             }
         }
 
-        function sendError(id,err) {
+        function sendError(id, err) {
             doPost({
-                id:id,
-                type:TYPE_RESPONSE,
-                error:err
+                id: id,
+                type: TYPE_RESPONSE,
+                error: err
             })
         }
-        function sendReponse(id,data) {
+
+        function sendReponse(id, data) {
             doPost({
-                id:id,
-                type:TYPE_RESPONSE,
-                data:data
+                id: id,
+                type: TYPE_RESPONSE,
+                data: data
             })
         }
+
         /**
-         * request:
+         * postMessage协议
+         * command:
          * {
          *      id:string
-         *      action:string,
+         *      command:string,
          *      args:object,
-         *      type:'request'
+         *      type:'command'
          * }
          * response:{
          *      id:string,
@@ -75,67 +116,74 @@
          *
          * */
         var dispatcher = {
-            stubs:{},
-            request:function (intent, onSuccess, onError) {
-                var message=Object.assign({},intent)
-                var id=genUUID();
-                message.id=id;
-                message.type=TYPE_REQUEST
-                this.stubs[id]={
-                    stub:message,
-                    onSuccess:onSuccess,
-                    onError:onError
+            stubs: {},
+            sendCommand: function (intent, onSuccess, onError) {
+                var payload = Object.assign({}, intent)
+                var id = genUUID();
+                payload.id = id;
+                payload.type = TYPE_REQUEST
+                this.stubs[id] = {
+                    stub: payload,
+                    onSuccess: onSuccess,
+                    onError: onError
                 }
-                doPost(message)
+                doPost(payload)
             },
-            onResponse:function (response) {
+            onResponse: function (response) {
                 var stub = this.stubs[response.id];
-                if(!stub){
-                    console.warn('stub not found:'+JSON.stringify(response))
+                if (!stub) {
+                    console.warn('stub not found:' + JSON.stringify(response))
                     return;
                 }
-                try{
-                    if(response.error){
-                        tryInvoke(stub.onError,response.error)
-                    }else {
-                        tryInvoke(stub.onSuccess,response.data)
+                try {
+                    if (response.error) {
+                        tryInvoke(stub.onError, response.error)
+                    } else {
+                        tryInvoke(stub.onSuccess, response.data)
                     }
-                }catch (err){
+                } catch (err) {
                     console.error(err)
-                }finally {
+                } finally {
                     delete this.stubs[response.id];
                     console.log(this.stubs)
                 }
             },
-            requestHandler:{
-                save:function (id,args) {
-                    localStorage.setItem(args.key,args.value)
-                    sendReponse(id,'ok')
+            commandHandler: {
+                save: function (id, args) {
+                    localStorage.setItem(args.key, args.value)
+                    sendReponse(id, 'ok')
                 }
             }
         }
 
-        var actions={
-            save:function (k, v, onSuccess, onError) {
-                dispatcher.request({action:'save',args:{key:k,value:v}},onSuccess,onError)
+        var actions = {
+            save: function (k, v, onSuccess, onError) {
+                dispatcher.sendCommand({command: 'save', args: {key: k, value: v}}, onSuccess, onError)
             }
         }
 
-        function handlerMessage(event)
-        {
-            if (event.origin !== window.origin)
+        function handlerMessage(event) {
+            debugger;
+            if (event.origin && event.origin !== window.origin) {
                 return;
+            }
 
-            var message=JSON.parse(event.data)
-            if(message.type===TYPE_RESPONSE){
-                dispatcher.onResponse(message)
-            }else if((!window.isWebView)&&message.type===TYPE_REQUEST){
-                tryInvoke(dispatcher.requestHandler[message.action],message.id,message.args)
-            }else{
-                console.error('not acceptable:'+event.data)
+            var payload = JSON.parse(event.data)
+            if (payload.type === TYPE_RESPONSE) {
+                dispatcher.onResponse(payload)
+            } else if ((!isReactNativePostMessageReady) && payload.type === TYPE_REQUEST) {
+                tryInvoke(dispatcher.commandHandler[payload.command], payload.id, payload.args)
+            } else {
+                console.error('not acceptable:' + event.data)
             }
         }
+
         window.addEventListener("message", handlerMessage, false);
+
+        actions.save('nihao', 'nihao123', function (ret) {
+            alert(ret)
+        })
+
     </script>
 </head>
 <body>
