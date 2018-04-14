@@ -23,6 +23,18 @@
         <td><a href="javascript:void(0)" onclick="test()">save</a></td>
     </tr>
     <tr>
+        <td><a href="javascript:void(0)" onclick="testSaveObj()">saveObj</a></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:void(0)" onclick="testSaveUndefined()">saveUndefined</a></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:void(0)" onclick="testRemove()">remove</a></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:void(0)" onclick="testMerge()">merge</a></td>
+    </tr>
+    <tr>
         <td><a href="javascript:void(0)" onclick="testLoad()">load</a></td>
     </tr>
     <tr>
@@ -151,7 +163,7 @@
                 if (response.error) {
                     doApply(stub, 'onError', response.error)
                 } else {
-                    doApply(stub, 'onSuccess', response.data)
+                    doApply(stub, 'onSuccess', JSON.parse(response.data))
                 }
             } catch (err) {
                 console.error(err)
@@ -162,34 +174,54 @@
         },
         commandHandler: {
             save: function (id, args) {
+                console.log(typeof args.value)
                 localStorage.setItem(args.key, args.value)
-                sendReponse(id, 'ok')
+                sendReponse(id, JSON.stringify('ok'))
             },
-            load: function (id, args) {
-                var value = localStorage.getItem(args.key)
+            load: function (id, key) {
+                var value = localStorage.getItem(key)
                 sendReponse(id, value)
+            },
+            remove: function (id, key) {
+                localStorage.removeItem(key)
+                sendReponse(id, JSON.stringify('ok'))
+            },
+            merge: function (id, args) {
+               var assigned= Object.assign({},localStorage.getItem(args.key),args.value)
+                localStorage.setItem(args.key, assigned)
+                sendReponse(id, JSON.stringify('ok'))
             },
             getAllKeys: function (id) {
                 var ret = []
                 for (var i = 0; i < localStorage.length; i++) {
                     ret.push(localStorage.key(i))
                 }
-                sendReponse(id, ret)
+                sendReponse(id, JSON.stringify(ret))
             },
             multiGet: function (id, args) {
-                sendReponse(id, args.map(function (value) {
-                    return [value, localStorage[value]];
-                }));
+                sendReponse(id, JSON.stringify(args.map(function (key) {
+                    return [key, JSON.parse(localStorage[key])];
+                })));
             }
         }
     }
 
     var actions = {
         save: function (k, v, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'save', args: {key: k, value: v}}, onSuccess, onError)
+            if(v===undefined){
+                console.error('value cannot be undefined')
+                return
+            }
+            dispatcher.sendCommand({command: 'save', args: {key: k, value: JSON.stringify(v)}}, onSuccess, onError)
         },
         load: function (k, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'load', args: {key: k}}, onSuccess, onError)
+            dispatcher.sendCommand({command: 'load', args: k}, onSuccess, onError)
+        },
+        remove: function (k, onSuccess, onError) {
+            dispatcher.sendCommand({command: 'remove', args: k}, onSuccess, onError)
+        },
+        merge: function (k,v, onSuccess, onError) {
+            dispatcher.sendCommand({command: 'merge', args:{key: k, value: v}}, onSuccess, onError)
         },
         getAllKeys: function (onSuccess, onError) {
             dispatcher.sendCommand({command: 'getAllKeys'}, onSuccess, onError)
@@ -225,7 +257,28 @@
         var value = document.getElementById("value").value
 
         actions.save(key, value, function (ret) {
-            alert(ret + '' + !!window.originalPostMessage)
+            alert(ret )
+        })
+    }
+
+    function testSaveUndefined() {
+        var key = document.getElementById("key").value
+        actions.save(key, undefined, function (ret) {
+            alert(ret )
+        })
+    }
+    function testSaveObj() {
+        var key = document.getElementById("key").value
+        var text = document.getElementById("value").value;
+
+        try {
+            var value = JSON.parse(text)
+        } catch (e) {
+            alert(e)
+        }
+
+        actions.save(key, value, function (ret) {
+            alert(ret)
         })
     }
 
@@ -233,13 +286,32 @@
         var key = document.getElementById("key").value
 
         actions.load(key, function (ret) {
-            alert(ret + '' + !!window.originalPostMessage)
+            console.log(typeof ret)
+            alert(ret)
+        })
+    }
+    function testRemove() {
+        var key = document.getElementById("key").value
+
+        actions.remove(key, function (ret) {
+            alert(ret )
+        })
+    }
+    function testMerge() {
+        var key = document.getElementById("key").value
+
+        var text = document.getElementById("value").value;
+        //debugger;
+        var value = JSON.parse(text)
+
+        actions.merge(key, value,function (ret) {
+            alert(ret )
         })
     }
 
     actions.load('nihao', function (ret) {
         document.getElementById("key").value = 'nihao'
-        document.getElementById("value").value = ret
+        document.getElementById("value").value = typeof ret==='object'?JSON.stringify(ret):ret
     })
 
     function showAllKeys() {
