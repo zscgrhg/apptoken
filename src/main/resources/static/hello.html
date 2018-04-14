@@ -2,218 +2,302 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <style>
+        table * {
+            font-size: 30px;
+        }
+    </style>
     <title>web wiew test</title>
-    <script>
-        //https://www.jianshu.com/p/b37ee000379e
 
-        function awaitPostMessage() {
-            var isReactNativePostMessageReady = !!window.originalPostMessage;
-            var queue = [];
-            var currentPostMessageFn = function store(message) {
-                if (queue.length > 100) queue.shift();
-                queue.push(message);
-            };
-            if (!isReactNativePostMessageReady) {
-                var originalPostMessage = window.postMessage;
-                Object.defineProperty(window, 'postMessage', {
-                    configurable: true,
-                    enumerable: true,
-                    get: function () {
-                        return currentPostMessageFn;
-                    },
-                    set: function (fn) {
-                        currentPostMessageFn = fn;
-                        isReactNativePostMessageReady = true;
-                        setTimeout(sendQueue, 0);
-                    }
-                });
-                window.postMessage.toString = function () {
-                    return String(originalPostMessage);
-                };
-            }
+</head>
+<body>
+<h1>hello</h1>
+<table width="100%">
+    <tr>
+        <td><input id="key" name="key"></td>
+    </tr>
+    <tr>
+        <td><input id="value" name="value"></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:void(0)" onclick="test()">save</a></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:void(0)" onclick="testLoad()">load</a></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:void(0)" onclick="showAllKeys()">显示所有key</a></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:void(0)" onclick="showGetAll()">显示所有key,value</a></td>
+    </tr>
+</table>
 
-            function sendQueue() {
-                while (queue.length > 0) window.postMessage(queue.shift());
-            }
-        }
 
-       //awaitPostMessage();
+<div>
+    <div id="echo">
+
+    </div>
+</div>
+</body>
+<script>
+
+
+
+
+
+
+
+
+    //https://www.jianshu.com/p/b37ee000379e
+
+    function awaitPostMessage() {
         var isReactNativePostMessageReady = !!window.originalPostMessage;
-
-
-
-        var CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
-        var TYPE_REQUEST = 'command'
-        var TYPE_RESPONSE = 'response'
-
-        function genUUID() {
-            var chars = CHARS, uuid = new Array(36), rnd = 0, r;
-            for (var i = 0; i < 36; i++) {
-                if (i == 8 || i == 13 || i == 18 || i == 23) {
-                    uuid[i] = '-';
-                } else if (i == 14) {
-                    uuid[i] = '4';
-                } else {
-                    if (rnd <= 0x02) rnd = 0x2000000 + (Math.random() * 0x1000000) | 0;
-                    r = rnd & 0xf;
-                    rnd = rnd >> 4;
-                    uuid[i] = chars[(i == 19) ? (r & 0x3) | 0x8 : r];
-                }
-            }
-            return uuid.join('');
+        var queue = [];
+        var currentPostMessageFn = function store(message) {
+            if (queue.length > 100) queue.shift();
+            queue.push(message);
         };
-
-        function tryInvoke() {
-            var args = Array.prototype.slice.call(arguments);
-            var func = args.shift();
-            try {
-                return func.apply(null, args);
-            } catch (err) {
-                console.error(err);
-            }
+        if (!isReactNativePostMessageReady) {
+            var originalPostMessage = window.postMessage;
+            Object.defineProperty(window, 'postMessage', {
+                configurable: true,
+                enumerable: true,
+                get: function () {
+                    return currentPostMessageFn;
+                },
+                set: function (fn) {
+                    currentPostMessageFn = fn;
+                    isReactNativePostMessageReady = true;
+                    setTimeout(sendQueue, 0);
+                }
+            });
+            window.postMessage.toString = function () {
+                return String(originalPostMessage);
+            };
         }
 
-        function doPost(payload) {
-            if (isReactNativePostMessageReady) {
-                postMessage(JSON.stringify(payload))
+        function sendQueue() {
+            while (queue.length > 0) window.postMessage(queue.shift());
+        }
+    }
+
+
+    var RCT_WvBrige = window['__REACT_WEB_VIEW_BRIDGE'];
+    var isRCT_WebView = !!RCT_WvBrige;
+    if(isRCT_WebView){
+        //awaitPostMessage();
+    }
+
+
+
+    var CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+    var TYPE_REQUEST = 'command'
+    var TYPE_RESPONSE = 'response'
+
+    function genUUID() {
+        var chars = CHARS, uuid = new Array(36), rnd = 0, r;
+        for (var i = 0; i < 36; i++) {
+            if (i == 8 || i == 13 || i == 18 || i == 23) {
+                uuid[i] = '-';
+            } else if (i == 14) {
+                uuid[i] = '4';
             } else {
-                postMessage(JSON.stringify(payload), window.origin)
+                if (rnd <= 0x02) rnd = 0x2000000 + (Math.random() * 0x1000000) | 0;
+                r = rnd & 0xf;
+                rnd = rnd >> 4;
+                uuid[i] = chars[(i == 19) ? (r & 0x3) | 0x8 : r];
             }
         }
+        return uuid.join('');
+    };
 
-        function sendError(id, err) {
-            doPost({
-                id: id,
-                type: TYPE_RESPONSE,
-                error: err
-            })
+    function doApply() {
+        var args = Array.prototype.slice.call(arguments);
+        var thisObj = args.shift();
+        var funcName = args.shift();
+        var func = thisObj[funcName];
+        try {
+            return func.apply(thisObj, args);
+        } catch (err) {
+            console.error(err);
         }
+    }
 
-        function sendReponse(id, data) {
-            doPost({
-                id: id,
-                type: TYPE_RESPONSE,
-                data: data
-            })
+    function doPost(payload) {
+        if (isRCT_WebView) {
+            var isReactNativePostMessageReady = !!window.originalPostMessage;
+            if(isReactNativePostMessageReady){
+                postMessage(JSON.stringify(payload))
+            }else {
+                RCT_WvBrige.postMessage(JSON.stringify(payload))
+            }
+        } else {
+            postMessage(JSON.stringify(payload), window.origin)
         }
+    }
 
-        /**
-         * postMessage协议
-         * command:
-         * {
+    function sendError(id, err) {
+        doPost({
+            id: id,
+            type: TYPE_RESPONSE,
+            error: err
+        })
+    }
+
+    function sendReponse(id, data) {
+        doPost({
+            id: id,
+            type: TYPE_RESPONSE,
+            data: data
+        })
+    }
+
+    /**
+     * postMessage协议
+     * command:
+     * {
          *      id:string
          *      command:string,
          *      args:object,
          *      type:'command'
          * }
-         * response:{
+     * response:{
          *      id:string,
          *      data:object,
          *      error:object,
          *      type:'response'
          * }
-         *
-         * */
-        var dispatcher = {
-            stubs: {},
-            sendCommand: function (intent, onSuccess, onError) {
-                var payload = Object.assign({}, intent)
-                var id = genUUID();
-                payload.id = id;
-                payload.type = TYPE_REQUEST
-                this.stubs[id] = {
-                    stub: payload,
-                    onSuccess: onSuccess,
-                    onError: onError
-                }
-                doPost(payload)
-            },
-            onResponse: function (response) {
-                var stub = this.stubs[response.id];
-                if (!stub) {
-                    console.warn('stub not found:' + JSON.stringify(response))
-                    return;
-                }
-                try {
-                    if (response.error) {
-                        tryInvoke(stub.onError, response.error)
-                    } else {
-                        tryInvoke(stub.onSuccess, response.data)
-                    }
-                } catch (err) {
-                    console.error(err)
-                } finally {
-                    delete this.stubs[response.id];
-                    console.log(this.stubs)
-                }
-            },
-            commandHandler: {
-                save: function (id, args) {
-                    localStorage.setItem(args.key, args.value)
-                    sendReponse(id, 'ok')
-                },
-                load: function (id, args) {
-                   var value= localStorage.getItem(args.key)
-                    sendReponse(id, value)
-                }
+     *
+     * */
+    var dispatcher = {
+        stubs: {},
+        sendCommand: function (intent, onSuccess, onError) {
+            var payload = Object.assign({}, intent)
+            var id = genUUID();
+            payload.id = id;
+            payload.type = TYPE_REQUEST
+            this.stubs[id] = {
+                stub: payload,
+                onSuccess: onSuccess,
+                onError: onError
             }
-        }
-
-        var actions = {
-            save: function (k, v, onSuccess, onError) {
-                dispatcher.sendCommand({command: 'save', args: {key: k, value: v}}, onSuccess, onError)
-            },
-            load:function (k, onSuccess, onError) {
-                dispatcher.sendCommand({command: 'load', args: {key: k}}, onSuccess, onError)
-            }
-        }
-
-        function handlerMessage(event) {
-            if (event.origin && event.origin !== window.origin) {
+            doPost(payload)
+        },
+        onResponse: function (response) {
+            var stub = this.stubs[response.id];
+            if (!stub) {
+                console.warn('stub not found:' + JSON.stringify(response))
                 return;
             }
-
-            var payload = JSON.parse(event.data)
-            if (payload.type === TYPE_RESPONSE) {
-                dispatcher.onResponse(payload)
-            } else if ((!isReactNativePostMessageReady) && payload.type === TYPE_REQUEST) {
-                tryInvoke(dispatcher.commandHandler[payload.command], payload.id, payload.args)
-            } else {
-                console.error('not acceptable:' + event.data)
+            try {
+                if (response.error) {
+                    doApply(stub, 'onError', response.error)
+                } else {
+                    doApply(stub, 'onSuccess', response.data)
+                }
+            } catch (err) {
+                console.error(err)
+            } finally {
+                delete this.stubs[response.id];
+                console.log(this.stubs)
+            }
+        },
+        commandHandler: {
+            save: function (id, args) {
+                localStorage.setItem(args.key, args.value)
+                sendReponse(id, 'ok')
+            },
+            load: function (id, args) {
+                var value = localStorage.getItem(args.key)
+                sendReponse(id, value)
+            },
+            getAllKeys: function (id) {
+                var ret = []
+                for (var i = 0; i < localStorage.length; i++) {
+                    ret.push(localStorage.key(i))
+                }
+                sendReponse(id, ret)
+            },
+            multiGet: function (id, args) {
+                sendReponse(id, args.map(function (value) {
+                    return [value, localStorage[value]];
+                }));
             }
         }
+    }
 
-        window.addEventListener("message", handlerMessage, false);
-        document.addEventListener("message", handlerMessage, false);
+    var actions = {
+        save: function (k, v, onSuccess, onError) {
+            dispatcher.sendCommand({command: 'save', args: {key: k, value: v}}, onSuccess, onError)
+        },
+        load: function (k, onSuccess, onError) {
+            dispatcher.sendCommand({command: 'load', args: {key: k}}, onSuccess, onError)
+        },
+        getAllKeys: function (onSuccess, onError) {
+            dispatcher.sendCommand({command: 'getAllKeys'}, onSuccess, onError)
+        },
+        multiGet: function (kArr, onSuccess, onError) {
+            dispatcher.sendCommand({command: 'multiGet', args: kArr}, onSuccess, onError)
+        }
+    }
 
-        function test() {
-            var key=document.getElementById("key").value
-            var value=document.getElementById("value").value
-
-            actions.save(key, value, function (ret) {
-                alert(ret+''+!!window.originalPostMessage)
-            })
+    function handlerMessage(event) {
+        if (event.origin && event.origin !== window.origin) {
+            return;
         }
 
-        function testLoad() {
-            var key=document.getElementById("key").value
-
-            actions.load(key, function (ret) {
-                alert(ret+''+!!window.originalPostMessage)
-            })
+        var payload = JSON.parse(event.data)
+        if (payload.type === TYPE_RESPONSE) {
+            dispatcher.onResponse(payload)
+        } else if ((!isRCT_WebView) && payload.type === TYPE_REQUEST) {
+            doApply(dispatcher.commandHandler, payload.command, payload.id, payload.args)
+        } else {
+            console.error('not acceptable:' + event.data)
         }
+    }
 
-        actions.load('nihao', function (ret) {
-            document.getElementById("value").value=ret
+    window.addEventListener("message", handlerMessage, false);
+    document.addEventListener("message", handlerMessage, false);
+
+    function test() {
+        var key = document.getElementById("key").value
+        var value = document.getElementById("value").value
+
+        actions.save(key, value, function (ret) {
+            alert(ret + '' + !!window.originalPostMessage)
+        })
+    }
+
+    function testLoad() {
+        var key = document.getElementById("key").value
+
+        actions.load(key, function (ret) {
+            alert(ret + '' + !!window.originalPostMessage)
+        })
+    }
+
+    actions.load('nihao', function (ret) {
+        document.getElementById("key").value = 'nihao'
+        document.getElementById("value").value = ret
+    })
+
+    function showAllKeys() {
+        actions.getAllKeys(function (kSet) {
+
+            document.getElementById("echo").innerHTML = JSON.stringify(kSet)
+        })
+    }
+    function showGetAll() {
+        actions.getAllKeys(function (kArr) {
+            actions.multiGet(kArr,function (ret) {
+                document.getElementById("echo").innerHTML = JSON.stringify(ret)
+            })
         })
 
-    </script>
-</head>
-<body>
-<h1>hello</h1>
-<input id="key" name="key"><br/>
-<input id="value" name="value">
-<a href="javascript:void(0)" onclick="test()">sendCommand</a><br/>
-<a href="javascript:void(0)" onclick="testLoad()">load</a>
-</body>
+    }
+
+    showAllKeys();
+
+</script>
 </html>
