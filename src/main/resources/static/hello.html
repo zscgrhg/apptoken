@@ -41,53 +41,10 @@
 </div>
 </body>
 <script>
-
-
-
-
-
-
-
-
     //https://www.jianshu.com/p/b37ee000379e
-
-    function awaitPostMessage() {
-        var isReactNativePostMessageReady = !!window.originalPostMessage;
-        var queue = [];
-        var currentPostMessageFn = function store(message) {
-            if (queue.length > 100) queue.shift();
-            queue.push(message);
-        };
-        if (!isReactNativePostMessageReady) {
-            var originalPostMessage = window.postMessage;
-            Object.defineProperty(window, 'postMessage', {
-                configurable: true,
-                enumerable: true,
-                get: function () {
-                    return currentPostMessageFn;
-                },
-                set: function (fn) {
-                    currentPostMessageFn = fn;
-                    isReactNativePostMessageReady = true;
-                    setTimeout(sendQueue, 0);
-                }
-            });
-            window.postMessage.toString = function () {
-                return String(originalPostMessage);
-            };
-        }
-
-        function sendQueue() {
-            while (queue.length > 0) window.postMessage(queue.shift());
-        }
-    }
-
-
     var RCT_WvBrige = window['__REACT_WEB_VIEW_BRIDGE'];
     var isRCT_WebView = !!RCT_WvBrige;
-    if(isRCT_WebView){
-        //awaitPostMessage();
-    }
+
 
 
 
@@ -124,7 +81,7 @@
         }
     }
 
-    function doPost(payload) {
+    function send(payload) {
         if (isRCT_WebView) {
             var isReactNativePostMessageReady = !!window.originalPostMessage;
             if(isReactNativePostMessageReady){
@@ -138,7 +95,7 @@
     }
 
     function sendError(id, err) {
-        doPost({
+        send({
             id: id,
             type: TYPE_RESPONSE,
             error: err
@@ -146,7 +103,7 @@
     }
 
     function sendReponse(id, data) {
-        doPost({
+        send({
             id: id,
             type: TYPE_RESPONSE,
             data: data
@@ -182,7 +139,7 @@
                 onSuccess: onSuccess,
                 onError: onError
             }
-            doPost(payload)
+            send(payload)
         },
         onResponse: function (response) {
             var stub = this.stubs[response.id];
@@ -257,8 +214,11 @@
         }
     }
 
-    window.addEventListener("message", handlerMessage, false);
-    document.addEventListener("message", handlerMessage, false);
+    if(isRCT_WebView){
+        document.addEventListener("message", handlerMessage, false);
+    }else {
+        window.addEventListener("message", handlerMessage, false);
+    }
 
     function test() {
         var key = document.getElementById("key").value
