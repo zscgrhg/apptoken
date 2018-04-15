@@ -52,206 +52,8 @@
     </div>
 </div>
 </body>
+<script src="require.js" data-main="main" type="application/javascript"></script>
 <script>
-    //https://www.jianshu.com/p/b37ee000379e
-    var RCT_WvBrige = window['__REACT_WEB_VIEW_BRIDGE'];
-    var isRCT_WebView = !!RCT_WvBrige;
-
-
-
-
-    var CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
-    var TYPE_REQUEST = 'command'
-    var TYPE_RESPONSE = 'response'
-
-    function genUUID() {
-        var chars = CHARS, uuid = new Array(36), rnd = 0, r;
-        for (var i = 0; i < 36; i++) {
-            if (i == 8 || i == 13 || i == 18 || i == 23) {
-                uuid[i] = '-';
-            } else if (i == 14) {
-                uuid[i] = '4';
-            } else {
-                if (rnd <= 0x02) rnd = 0x2000000 + (Math.random() * 0x1000000) | 0;
-                r = rnd & 0xf;
-                rnd = rnd >> 4;
-                uuid[i] = chars[(i == 19) ? (r & 0x3) | 0x8 : r];
-            }
-        }
-        return uuid.join('');
-    };
-
-    function doApply() {
-        var args = Array.prototype.slice.call(arguments);
-        var thisObj = args.shift();
-        var funcName = args.shift();
-        var func = thisObj[funcName];
-        try {
-            return func.apply(thisObj, args);
-        } catch (err) {
-            console.error(err);
-        }
-    }
-
-    function send(payload) {
-        if (isRCT_WebView) {
-            var isReactNativePostMessageReady = !!window.originalPostMessage;
-            if(isReactNativePostMessageReady){
-                postMessage(JSON.stringify(payload))
-            }else {
-                RCT_WvBrige.postMessage(JSON.stringify(payload))
-            }
-        } else {
-            postMessage(JSON.stringify(payload), window.origin)
-        }
-    }
-
-    function sendError(id, err) {
-        send({
-            id: id,
-            type: TYPE_RESPONSE,
-            error: err
-        })
-    }
-
-    function sendReponse(id, data) {
-        send({
-            id: id,
-            type: TYPE_RESPONSE,
-            data: data
-        })
-    }
-
-    /**
-     * postMessage协议
-     * command:
-     * {
-         *      id:string
-         *      command:string,
-         *      args:object,
-         *      type:'command'
-         * }
-     * response:{
-         *      id:string,
-         *      data:object,
-         *      error:object,
-         *      type:'response'
-         * }
-     *
-     * */
-    var dispatcher = {
-        stubs: {},
-        sendCommand: function (intent, onSuccess, onError) {
-            var payload = Object.assign({}, intent)
-            var id = genUUID();
-            payload.id = id;
-            payload.type = TYPE_REQUEST
-            this.stubs[id] = {
-                stub: payload,
-                onSuccess: onSuccess,
-                onError: onError
-            }
-            send(payload)
-        },
-        onResponse: function (response) {
-            var stub = this.stubs[response.id];
-            if (!stub) {
-                console.warn('stub not found:' + JSON.stringify(response))
-                return;
-            }
-            try {
-                if (response.error) {
-                    doApply(stub, 'onError', response.error)
-                } else {
-                    doApply(stub, 'onSuccess', JSON.parse(response.data))
-                }
-            } catch (err) {
-                console.error(err)
-            } finally {
-                delete this.stubs[response.id];
-                console.log(this.stubs)
-            }
-        },
-        commandHandler: {
-            save: function (id, args) {
-                console.log(typeof args.value)
-                localStorage.setItem(args.key, args.value)
-                sendReponse(id, JSON.stringify('ok'))
-            },
-            load: function (id, key) {
-                var value = localStorage.getItem(key)
-                sendReponse(id, value)
-            },
-            remove: function (id, key) {
-                localStorage.removeItem(key)
-                sendReponse(id, JSON.stringify('ok'))
-            },
-            merge: function (id, args) {
-               var assigned= Object.assign({},localStorage.getItem(args.key),args.value)
-                localStorage.setItem(args.key, assigned)
-                sendReponse(id, JSON.stringify('ok'))
-            },
-            getAllKeys: function (id) {
-                var ret = []
-                for (var i = 0; i < localStorage.length; i++) {
-                    ret.push(localStorage.key(i))
-                }
-                sendReponse(id, JSON.stringify(ret))
-            },
-            multiGet: function (id, args) {
-                sendReponse(id, JSON.stringify(args.map(function (key) {
-                    return [key, JSON.parse(localStorage[key])];
-                })));
-            }
-        }
-    }
-
-    var actions = {
-        save: function (k, v, onSuccess, onError) {
-            if(v===undefined){
-                console.error('value cannot be undefined')
-                return
-            }
-            dispatcher.sendCommand({command: 'save', args: {key: k, value: JSON.stringify(v)}}, onSuccess, onError)
-        },
-        load: function (k, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'load', args: k}, onSuccess, onError)
-        },
-        remove: function (k, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'remove', args: k}, onSuccess, onError)
-        },
-        merge: function (k,v, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'merge', args:{key: k, value: v}}, onSuccess, onError)
-        },
-        getAllKeys: function (onSuccess, onError) {
-            dispatcher.sendCommand({command: 'getAllKeys'}, onSuccess, onError)
-        },
-        multiGet: function (kArr, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'multiGet', args: kArr}, onSuccess, onError)
-        }
-    }
-
-    function handlerMessage(event) {
-        if (event.origin && event.origin !== window.origin) {
-            return;
-        }
-
-        var payload = JSON.parse(event.data)
-        if (payload.type === TYPE_RESPONSE) {
-            dispatcher.onResponse(payload)
-        } else if ((!isRCT_WebView) && payload.type === TYPE_REQUEST) {
-            doApply(dispatcher.commandHandler, payload.command, payload.id, payload.args)
-        } else {
-            console.error('not acceptable:' + event.data)
-        }
-    }
-
-    if(isRCT_WebView){
-        document.addEventListener("message", handlerMessage, false);
-    }else {
-        window.addEventListener("message", handlerMessage, false);
-    }
-
     function test() {
         var key = document.getElementById("key").value
         var value = document.getElementById("value").value
@@ -273,13 +75,12 @@
 
         try {
             var value = JSON.parse(text)
+            actions.save(key, value, function (ret) {
+                alert(ret)
+            })
         } catch (e) {
             alert(e)
         }
-
-        actions.save(key, value, function (ret) {
-            alert(ret)
-        })
     }
 
     function testLoad() {
@@ -309,10 +110,7 @@
         })
     }
 
-    actions.load('nihao', function (ret) {
-        document.getElementById("key").value = 'nihao'
-        document.getElementById("value").value = typeof ret==='object'?JSON.stringify(ret):ret
-    })
+
 
     function showAllKeys() {
         actions.getAllKeys(function (kSet) {
@@ -328,8 +126,6 @@
         })
 
     }
-
-    showAllKeys();
 
 </script>
 </html>

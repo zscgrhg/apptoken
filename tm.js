@@ -1,14 +1,18 @@
-var obj1=[1,2,3,7,8]
+function currying() {
+    var args = Array.prototype.slice.call(arguments);
+    var func = args.shift();
+    console.log('curr')
+   return function () {
+       var argsAppend = Array.prototype.slice.call(arguments);
 
-var obj2=[4,5,6]
-
-
-function merge(target,source){
-
+       return func.apply(null, args.concat(argsAppend));
+   }
 }
 
-var ret=Object.assign(obj1,obj2)
-console.log(ret)
+function func3(a, b, c) {
+    console.log(this)
+    console.log(a+'>'+b+'>'+c)
+}
 
-var value = typeof JSON.stringify(null)
-console.log(value)
+currying(func3.bind({}),1,2)(4)
+
