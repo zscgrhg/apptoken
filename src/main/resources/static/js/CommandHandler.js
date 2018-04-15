@@ -19,11 +19,20 @@ define(['storage','messager'],function (storage,messager){
         remove: function (id, key) {
             storage.remove(key,currying(messager.sendReponse,id),currying(messager.sendError,id))
         },
-        getAllKeys: function (id) {
-            storage.getAllKeys(currying(messager.sendReponse,id),currying(messager.sendError,id))
+        multiSet: function (id,keyValuePairs) {
+            storage.multiSet(keyValuePairs,currying(messager.sendReponse,id),currying(messager.sendError,id))
         },
         multiGet: function (id, args) {
             storage.multiGet(args,currying(messager.sendReponse,id),currying(messager.sendError,id))
+        },
+        multiRemove: function (id,kArr) {
+            storage.multiRemove(kArr,currying(messager.sendReponse,id),currying(messager.sendError,id))
+        },
+        getAllKeys: function (id) {
+            storage.getAllKeys(currying(messager.sendReponse,id),currying(messager.sendError,id))
+        },
+        clear: function (id) {
+            storage.clear(currying(messager.sendReponse,id),currying(messager.sendError,id))
         }
     }
 

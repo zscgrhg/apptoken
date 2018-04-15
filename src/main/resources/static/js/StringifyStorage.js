@@ -43,12 +43,20 @@ define(function () {
             (onSuccess || noop)('ok');
         },
 
-        getAllKeys: function (onSuccess, onError) {
-            var ret = []
-            for (var i = 0; i < localStorage.length; i++) {
-                ret.push(localStorage.key(i))
+        multiSet: function (keyValuePairs, onSuccess, onError){
+            var errors=[];
+            keyValuePairs.forEach(function (kvp) {
+                try{
+                    localStorage.setItem(kvp[0],encode(kvp[1]))
+                }catch (err){
+                    err.push(err)
+                }
+            });
+            if(errors.length>0){
+                (onError || noop)(errors)
+            }else{
+                (onSuccess || noop)('ok')
             }
-            (onSuccess || noop)(ret)
         },
 
         multiGet: function (keys, onSuccess, onError) {
@@ -60,6 +68,33 @@ define(function () {
             if (onSuccess) {
                 onSuccess(ret)
             }
+        },
+        multiRemove: function (keys, onSuccess, onError) {
+
+            var errors=[];
+            keys.forEach(function (k) {
+                try{
+                    localStorage.removeItem(k)
+                }catch (err){
+                    err.push(err)
+                }
+            });
+            if(errors.length>0){
+                (onError || noop)(errors)
+            }else{
+                (onSuccess || noop)('ok')
+            }
+        },
+        getAllKeys: function (onSuccess, onError) {
+            var ret = []
+            for (var i = 0; i < localStorage.length; i++) {
+                ret.push(localStorage.key(i))
+            }
+            (onSuccess || noop)(ret)
+        },
+        clear: function (onSuccess, onError) {
+            localStorage.clear();
+            (onSuccess || noop)('ok')
         }
     }
     return storage;

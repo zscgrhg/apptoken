@@ -1,4 +1,4 @@
-define(['storage', 'messager', 'handler', 'dispatcher'], function (storage, messager, handler, dispatcher) {
+define([ 'messager', 'dispatcher'], function ( messager, dispatcher) {
     function handlerMessage(event) {
         if (event.origin && event.origin !== window.origin) {
             return;
@@ -10,7 +10,7 @@ define(['storage', 'messager', 'handler', 'dispatcher'], function (storage, mess
         } else if ((!messager.isRCT_WebView) && payload.type === messager.TYPE_REQUEST) {
             dispatcher.doApply(dispatcher.commandHandler, payload.command, payload.id, payload.args)
         } else {
-            console.error('not acceptable:' + event.data)
+            console.error('unkown message:' + event.data)
         }
     }
 
@@ -20,24 +20,34 @@ define(['storage', 'messager', 'handler', 'dispatcher'], function (storage, mess
         window.addEventListener("message", handlerMessage, false);
     }
 
+    function noop() {
+
+    }
+
     return {
         save: function (k, v, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'save', args: {key: k, value: JSON.stringify(v)}}, onSuccess, onError)
+            dispatcher.sendCommand({command: 'save', args: {key: k, value: v}}, (onSuccess||noop), (onError||noop))
         },
         load: function (k, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'load', args: k}, onSuccess, onError)
+            dispatcher.sendCommand({command: 'load', args: k}, (onSuccess||noop), (onError||noop))
         },
         remove: function (k, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'remove', args: k}, onSuccess, onError)
+            dispatcher.sendCommand({command: 'remove', args: k}, (onSuccess||noop), (onError||noop))
         },
-        merge: function (k, v, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'merge', args: {key: k, value: v}}, onSuccess, onError)
-        },
-        getAllKeys: function (onSuccess, onError) {
-            dispatcher.sendCommand({command: 'getAllKeys'}, onSuccess, onError)
+        multiSet: function (keyValuePairs, onSuccess, onError) {
+            dispatcher.sendCommand({command: 'multiSet', args: keyValuePairs}, (onSuccess||noop), (onError||noop))
         },
         multiGet: function (kArr, onSuccess, onError) {
-            dispatcher.sendCommand({command: 'multiGet', args: kArr}, onSuccess, onError)
-        }
+            dispatcher.sendCommand({command: 'multiGet', args: kArr}, (onSuccess||noop), (onError||noop))
+        },
+        multiRemove: function (kArr, onSuccess, onError) {
+            dispatcher.sendCommand({command: 'multiRemove', args: kArr}, (onSuccess||noop), (onError||noop))
+        },
+        getAllKeys: function (onSuccess, onError) {
+            dispatcher.sendCommand({command: 'getAllKeys'}, (onSuccess||noop), (onError||noop))
+        },
+        clear: function (onSuccess, onError) {
+            dispatcher.sendCommand({command: 'clear'}, (onSuccess||noop), (onError||noop))
+        },
     }
 });

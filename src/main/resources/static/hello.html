@@ -32,7 +32,7 @@
         <td><a href="javascript:void(0)" onclick="testRemove()">remove</a></td>
     </tr>
     <tr>
-        <td><a href="javascript:void(0)" onclick="testMerge()">merge</a></td>
+        <td><a href="javascript:void(0)" onclick="testMultiRemove()">multiRemove</a></td>
     </tr>
     <tr>
         <td><a href="javascript:void(0)" onclick="testLoad()">load</a></td>
@@ -98,15 +98,10 @@
             alert(ret )
         })
     }
-    function testMerge() {
-        var key = document.getElementById("key").value
 
-        var text = document.getElementById("value").value;
-        //debugger;
-        var value = JSON.parse(text)
-
-        actions.merge(key, value,function (ret) {
-            alert(ret )
+    function testMultiRemove() {
+        actions.multiRemove(["k1","k2","k3"],function (ret) {
+            alert(ret)
         })
     }
 
